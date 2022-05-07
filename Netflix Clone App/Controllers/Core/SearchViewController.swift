@@ -16,6 +16,13 @@ class SearchViewController: UIViewController {
         table.register(TitleTabelViewCell.self, forCellReuseIdentifier: TitleTabelViewCell.identifier)
         return table
     }()
+    
+    private let searchController: UISearchController = {
+        let controller = UISearchController(searchResultsController: SearchResultViewContoller())
+        controller.searchBar.placeholder = "Search for a Movie or a Tv Show"
+        controller.searchBar.searchBarStyle = .default
+        return controller
+    }()
 
     
     override func viewDidLoad() {
@@ -31,6 +38,10 @@ class SearchViewController: UIViewController {
         view.addSubview(discoverTable)
         discoverTable.delegate = self
         discoverTable.dataSource = self
+        navigationItem.searchController = searchController
+        
+        navigationController?.navigationBar.tintColor = .white
+        searchController.searchResultsUpdater = self
         
         fetchDiscoverMovies()
     }
@@ -75,4 +86,28 @@ extension SearchViewController: UITableViewDelegate, UITableViewDataSource {
         return 140
     }
     
+}
+
+extension SearchViewController: UISearchResultsUpdating {
+    func updateSearchResults(for searchController: UISearchController) {
+        let searchBar = searchController.searchBar
+        
+        guard let query = searchBar.text,
+              !query.trimmingCharacters(in: .whitespaces).isEmpty,
+              query.trimmingCharacters(in: .whitespaces).count >= 3,
+              let resultController = searchController.searchResultsController as? SearchResultViewContoller else {
+            return
+        }
+        APICaller.shared.search(with: query) { result in
+            DispatchQueue.main.async {
+                switch result {
+                    case .success(let titles):
+                        resultController.titles = titles
+                        resultController.searchResultCollectionView.reloadData()
+                    case .failure(let error):
+                        print(error.localizedDescription)
+                }
+            }
+        }
+    }
 }
